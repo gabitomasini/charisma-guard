@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -56,8 +56,8 @@
     --shadow-glow-crisis: 0 0 40px hsl(0, 72%, 51%, 0.3);
     --shadow-card: 0 4px 24px -4px rgba(0, 0, 0, 0.4);
 
-    --font-display: 'Outfit', sans-serif;
-    --font-body: 'Inter', sans-serif;
+    --font-display: 'Roboto', sans-serif;
+    --font-body: 'Roboto', sans-serif;
 
     --sidebar-background: 222 47% 6%;
     --sidebar-foreground: 210 40% 98%;
@@ -110,7 +110,12 @@
     font-family: var(--font-body);
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-display);
   }
 }
@@ -186,15 +191,19 @@
     from {
       box-shadow: 0 0 20px hsl(173, 80%, 50%, 0.2);
     }
+
     to {
       box-shadow: 0 0 40px hsl(173, 80%, 50%, 0.4);
     }
   }
 
   @keyframes float {
-    0%, 100% {
+
+    0%,
+    100% {
       transform: translateY(0);
     }
+
     50% {
       transform: translateY(-10px);
     }

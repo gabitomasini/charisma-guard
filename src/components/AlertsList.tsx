@@ -1,75 +1,49 @@
-import { AlertTriangle, Clock, TrendingUp, ChevronRight } from "lucide-react";
+import { AlertTriangle, Clock, TrendingUp, ChevronRight, ChevronDown, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
+import { EventMetric, Mention } from "@/services/dataService";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-interface Alert {
-  id: string;
-  title: string;
-  description: string;
-  severity: "critical" | "warning" | "info";
-  time: string;
-  mentions: number;
-  trend: string;
+interface AlertsListProps {
+  alerts?: EventMetric[];
+  mentions?: Mention[];
 }
 
-const alerts: Alert[] = [
-  {
-    id: "1",
-    title: "Pico de negatividade detectado",
-    description: "Aumento de 340% em menções negativas sobre atendimento ao cliente",
-    severity: "critical",
-    time: "2 min",
-    mentions: 1247,
-    trend: "+340%"
-  },
-  {
-    id: "2",
-    title: "Novo tópico emergente",
-    description: "Discussão sobre qualidade do produto ganhando tração no Twitter",
-    severity: "warning",
-    time: "15 min",
-    mentions: 523,
-    trend: "+89%"
-  },
-  {
-    id: "3",
-    title: "Influenciador crítico",
-    description: "@usuario_influente (500K seguidores) mencionou a marca negativamente",
-    severity: "warning",
-    time: "32 min",
-    mentions: 156,
-    trend: "+45%"
-  },
-  {
-    id: "4",
-    title: "Viralização em curso",
-    description: "Post sobre problemas de entrega sendo compartilhado rapidamente",
-    severity: "critical",
-    time: "8 min",
-    mentions: 892,
-    trend: "+567%"
-  }
-];
+const AlertsList = ({ alerts = [], mentions = [] }: AlertsListProps) => {
+  const [expandedAlert, setExpandedAlert] = useState<string | null>(null);
 
-const AlertsList = () => {
-  const getSeverityStyles = (severity: Alert["severity"]) => {
-    switch (severity) {
-      case "critical":
+  const toggleAlert = (eventName: string) => {
+    if (expandedAlert === eventName) {
+      setExpandedAlert(null);
+    } else {
+      setExpandedAlert(eventName);
+    }
+  };
+
+  const getSeverityStyles = (criticality: string) => {
+    switch (criticality?.toLowerCase()) {
+      case "crítico":
+      case "critico":
+      case "alto":
         return {
           badge: "crisis" as const,
           border: "border-l-destructive",
-          bg: "bg-destructive/5"
+          bg: "bg-destructive/5",
+          label: "Crítico"
         };
-      case "warning":
+      case "moderado":
         return {
           badge: "warning" as const,
           border: "border-l-warning",
-          bg: "bg-warning/5"
+          bg: "bg-warning/5",
+          label: "Atenção"
         };
       default:
         return {
           badge: "secondary" as const,
           border: "border-l-primary",
-          bg: "bg-primary/5"
+          bg: "bg-primary/5",
+          label: "Info"
         };
     }
   };
@@ -85,42 +59,86 @@ const AlertsList = () => {
           {alerts.length}
         </Badge>
       </div>
-      
+
       <div className="space-y-2">
-        {alerts.map((alert) => {
-          const styles = getSeverityStyles(alert.severity);
+        {alerts.map((alert, index) => {
+          const styles = getSeverityStyles(alert.criticality);
+          const isExpanded = expandedAlert === alert.event;
+          const relatedMentions = mentions.filter(m => m.eventName === alert.event);
+
           return (
-            <div 
-              key={alert.id}
-              className={`p-3 rounded-xl ${styles.bg} border-l-4 ${styles.border} border border-border/50 active:scale-[0.98] transition-transform cursor-pointer`}
+            <div
+              key={index}
+              className={`rounded-xl border border-border/50 overflow-hidden transition-all duration-300 ${isExpanded ? 'bg-card shadow-lg' : styles.bg}`}
             >
-              <div className="flex items-start gap-3">
+              <div
+                className={`p-3 border-l-4 ${styles.border} cursor-pointer active:scale-[0.99] transition-transform flex items-start gap-3`}
+                onClick={() => toggleAlert(alert.event)}
+              >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <Badge variant={styles.badge} className="text-[10px]">
-                      {alert.severity === "critical" ? "Crítico" : "Atenção"}
+                      {styles.label}
                     </Badge>
                     <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                       <Clock className="w-3 h-3" />
-                      {alert.time}
+                      Hoje
                     </span>
                   </div>
                   <h3 className="font-medium text-sm text-foreground mb-1 line-clamp-1">
-                    {alert.title}
+                    {alert.event}
                   </h3>
-                  <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                    {alert.description}
-                  </p>
                   <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <TrendingUp className="w-3 h-3 text-destructive" />
-                      {alert.trend}
+                      +{Math.round(alert.risk * 10)}% Risco
                     </span>
-                    <span>{alert.mentions.toLocaleString()} menções</span>
+                    <span>{alert.total.toLocaleString()} menções</span>
                   </div>
                 </div>
-                <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0 mt-3" />
+                {isExpanded ? (
+                  <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0 mt-3" />
+                ) : (
+                  <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0 mt-3" />
+                )}
               </div>
+
+              {isExpanded && (
+                <div className="border-t border-border/50 bg-background/50 p-3 space-y-3 animate-in slide-in-from-top-2">
+                  <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground mb-2">
+                    <MessageSquare className="w-3 h-3" />
+                    Menções Relacionadas ({relatedMentions.length})
+                  </div>
+
+                  {relatedMentions.length > 0 ? (
+                    <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                      {relatedMentions.slice(0, 10).map((mention, idx) => (
+                        <div key={idx} className="p-2 rounded-lg bg-card border border-border/50 text-xs">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Avatar className="w-5 h-5">
+                              <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
+                                {(mention.author || "?").substring(0, 1).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium text-foreground truncate">{mention.author}</span>
+                            <span className="text-[10px] text-muted-foreground ml-auto">{mention.time}</span>
+                          </div>
+                          <p className="text-muted-foreground line-clamp-2">{mention.text}</p>
+                        </div>
+                      ))}
+                      {relatedMentions.length > 10 && (
+                        <div className="text-center text-[10px] text-muted-foreground pt-1">
+                          + {relatedMentions.length - 10} outras menções
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 text-xs text-muted-foreground">
+                      Nenhuma menção encontrada para este evento.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}

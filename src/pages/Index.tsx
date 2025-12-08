@@ -1,4 +1,5 @@
-import { useState } from "react";
+import Header from "@/components/Header";
+import { useState, useEffect } from "react";
 import MobileHeader from "@/components/MobileHeader";
 import AlertBanner from "@/components/AlertBanner";
 import TemperatureWidget from "@/components/TemperatureWidget";
@@ -7,63 +8,131 @@ import AlertsList from "@/components/AlertsList";
 import RecentMentions from "@/components/RecentMentions";
 import NarrativesList from "@/components/NarrativesList";
 import BottomNav from "@/components/BottomNav";
-import SentimentChart from "@/components/SentimentChart";
+import NarrativesDetailedList from "@/components/NarrativesDetailedList";
+import { loadExcelData, DashboardData, EventMetric } from "@/services/dataService";
 
-type Tab = "home" | "alerts" | "mentions" | "analytics" | "settings";
+type Tab = "home" | "alerts" | "mentions" | "analytics" | "narratives" | "settings";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<Tab>("home");
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const criticalAlert = {
-    severity: "critical" as const,
-    title: "Pico de negatividade detectado: +340% em menções sobre atendimento",
-    time: "2 min atrás"
-  };
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const result = await loadExcelData();
+        setData(result);
+      } catch (error) {
+        console.error("Failed to load data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // Derived Metrics
+  const lastEvent = data?.events[data.events.length - 1];
+
+  // Find latest critical event for banner
+  const criticalEvent = data?.events
+    .slice()
+    .reverse()
+    .find(e => e.criticality === "Crítico" || e.criticality === "Alto");
+
+  // Filter for Alerts List (Moderate or higher)
+  const activeAlerts = data?.events.filter(e =>
+    ["Crítico", "Alto", "Moderado"].includes(e.criticality)
+  ).reverse() || [];
+
+  // Aggregate totals
+  const totalMentions = data?.events.reduce((acc, curr) => acc + curr.total, 0) || 0;
+  const negativeMentions = data?.events.reduce((acc, curr) => acc + curr.negative, 0) || 0;
+  const totalReach = data?.events.reduce((acc, curr) => acc + curr.reach_total, 0) || 0;
+
+  // Sentiment Aggregation
+  const sentimentPositive = data?.events.reduce((acc, curr) => acc + curr.positive, 0) || 0;
+  const sentimentNeutral = data?.events.reduce((acc, curr) => acc + curr.neutral, 0) || 0;
+  const sentimentNegative = data?.events.reduce((acc, curr) => acc + curr.negative, 0) || 0;
+
+  if (loading) {
+    return <div className="min-h-screen bg-background flex items-center justify-center text-foreground">Carregando dados...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <MobileHeader alertCount={4} />
-      
-      <main className="pt-16">
+      <div className="md:hidden">
+        <MobileHeader
+          alertCount={activeAlerts.length}
+          onAlertClick={() => setActiveTab("alerts")}
+        />
+      </div>
+      <div className="hidden md:block">
+        <Header
+          alertCount={activeAlerts.length}
+          onAlertClick={() => setActiveTab("alerts")}
+        />
+      </div>
+
+      <main className="pt-16 md:pt-24">
         {activeTab === "home" && (
           <div className="space-y-4 py-4">
             {/* Critical Alert Banner */}
-            <AlertBanner alert={criticalAlert} />
-            
-            {/* Temperature Widget */}
-            <TemperatureWidget 
-              temperature={68} 
-              trend="up" 
-              trendValue="+5%" 
+            {criticalEvent && <AlertBanner event={criticalEvent} />}
+
+            {/* Temperature Widget - Use last event risk or 0 */}
+            <TemperatureWidget
+              temperature={lastEvent?.risk || 0}
+              positive={sentimentPositive}
+              negative={sentimentNegative}
+              neutral={sentimentNeutral}
+              velocity="2.8x" // Mocked for now as requested by visual
+              narrativeCount={activeAlerts.length}
             />
-            
+
             {/* Quick Metrics */}
-            <QuickMetrics />
-            
-            {/* Narratives */}
-            <NarrativesList />
-            
+            <QuickMetrics
+              totalMentions={totalMentions}
+              negativeMentions={negativeMentions}
+              totalReach={totalReach}
+            />
+
+            {/* Narratives from Excel Formula Sheet */}
+            <NarrativesList events={data?.events || []} onViewAll={() => setActiveTab("narratives")} />
+
             {/* Recent Mentions Preview */}
-            <RecentMentions />
+            <RecentMentions mentions={data?.mentions} />
           </div>
         )}
 
         {activeTab === "alerts" && (
           <div className="space-y-4 py-4">
-            <AlertsList />
+            <AlertsList alerts={activeAlerts} mentions={data?.mentions} />
           </div>
         )}
 
         {activeTab === "mentions" && (
           <div className="space-y-4 py-4">
-            <RecentMentions />
+            <RecentMentions mentions={data?.mentions} />
           </div>
         )}
 
         {activeTab === "analytics" && (
           <div className="space-y-4 py-4 px-4">
-            <SentimentChart />
+            <TemperatureWidget
+              temperature={lastEvent?.risk || 0}
+              positive={sentimentPositive}
+              negative={sentimentNegative}
+              neutral={sentimentNeutral}
+              velocity="2.8x" // Mocked for now as requested by visual
+              narrativeCount={activeAlerts.length}
+            />
           </div>
+        )}
+
+        {activeTab === "narratives" && (
+          <NarrativesDetailedList events={data?.events || []} />
         )}
 
         {activeTab === "settings" && (
@@ -79,11 +148,11 @@ const Index = () => {
           </div>
         )}
       </main>
-      
-      <BottomNav 
-        activeTab={activeTab} 
+
+      <BottomNav
+        activeTab={activeTab}
         onTabChange={setActiveTab}
-        alertCount={4}
+        alertCount={activeAlerts.length}
       />
     </div>
   );

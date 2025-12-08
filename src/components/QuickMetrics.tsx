@@ -1,50 +1,53 @@
+
 import { MessageCircle, TrendingUp, Users, Eye } from "lucide-react";
 
-interface Metric {
-  icon: React.ElementType;
-  label: string;
-  value: string;
-  change: string;
-  isNegative?: boolean;
+interface QuickMetricsProps {
+  totalMentions?: number;
+  negativeMentions?: number;
+  totalReach?: number;
 }
 
-const metrics: Metric[] = [
-  {
-    icon: MessageCircle,
-    label: "Menções",
-    value: "24.5K",
-    change: "+12%",
-    isNegative: false
-  },
-  {
-    icon: TrendingUp,
-    label: "Negativas",
-    value: "3.2K",
-    change: "+45%",
-    isNegative: true
-  },
-  {
-    icon: Users,
-    label: "Influencers",
-    value: "156",
-    change: "+23",
-    isNegative: false
-  },
-  {
-    icon: Eye,
-    label: "Alcance",
-    value: "2.8M",
-    change: "+8%",
-    isNegative: false
-  }
-];
+const QuickMetrics = ({
+  totalMentions = 0,
+  negativeMentions = 0,
+  totalReach = 0
+}: QuickMetricsProps) => {
+  const metrics = [
+    {
+      icon: MessageCircle,
+      label: "Menções",
+      value: totalMentions.toLocaleString(),
+      change: "+12%", // Placeholder for now
+      isNegative: false
+    },
+    {
+      icon: TrendingUp,
+      label: "Negativas",
+      value: negativeMentions.toLocaleString(),
+      change: `${totalMentions > 0 ? Math.round((negativeMentions / totalMentions) * 100) : 0}% `,
+      isNegative: true
+    },
+    {
+      icon: Users,
+      label: "Influencers",
+      value: "12", // Placeholder
+      change: "+2",
+      isNegative: false
+    },
+    {
+      icon: Eye,
+      label: "Alcance",
+      value: (totalReach / 1000).toFixed(1) + "K",
+      change: "+8%",
+      isNegative: false
+    }
+  ];
 
-const QuickMetrics = () => {
   return (
     <div className="px-4">
       <div className="grid grid-cols-4 gap-2">
         {metrics.map((metric, index) => (
-          <div 
+          <div
             key={index}
             className="p-3 rounded-xl bg-card border border-border/50 text-center"
           >
@@ -55,9 +58,8 @@ const QuickMetrics = () => {
             <div className="text-[10px] text-muted-foreground mb-0.5">
               {metric.label}
             </div>
-            <div className={`text-[10px] font-medium ${
-              metric.isNegative ? 'text-destructive' : 'text-success'
-            }`}>
+            <div className={`text - [10px] font - medium ${metric.isNegative ? 'text-destructive' : 'text-success'
+              } `}>
               {metric.change}
             </div>
           </div>
@@ -68,3 +70,4 @@ const QuickMetrics = () => {
 };
 
 export default QuickMetrics;
+
