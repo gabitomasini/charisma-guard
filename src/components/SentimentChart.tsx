@@ -18,30 +18,28 @@ const data = [
 const SentimentChart = () => {
   return (
     <Card variant="elevated">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle>Evolução do Sentimento</CardTitle>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-success" />
-              <span className="text-xs text-muted-foreground">Positivo</span>
+<CardHeader className="pb-2">
+        <div className="flex flex-col gap-2">
+          <CardTitle className="text-base">Evolução do Sentimento</CardTitle>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-success" />
+              <span className="text-[10px] text-muted-foreground">Positivo</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-destructive" />
-              <span className="text-xs text-muted-foreground">Negativo</span>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-destructive" />
+              <span className="text-[10px] text-muted-foreground">Negativo</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Neutro</span>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-muted-foreground" />
+              <span className="text-[10px] text-muted-foreground">Neutro</span>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 mt-2">
-          <Badge variant="crisis">Pico detectado às 12:00</Badge>
-        </div>
+        <Badge variant="crisis" className="w-fit text-[10px]">Pico às 12:00</Badge>
       </CardHeader>
-      <CardContent>
-        <div className="h-64">
+<CardContent>
+        <div className="h-48 -mx-2">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
