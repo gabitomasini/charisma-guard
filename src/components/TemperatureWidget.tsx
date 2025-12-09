@@ -6,7 +6,7 @@ interface TemperatureWidgetProps {
   positive?: number;
   negative?: number;
   neutral?: number;
-  velocity?: string;
+
   narrativeCount?: number;
 }
 
@@ -15,7 +15,7 @@ const TemperatureWidget = ({
   positive = 0,
   negative = 0,
   neutral = 0,
-  velocity = "1.0x",
+
   narrativeCount = 0
 }: TemperatureWidgetProps) => {
   const getTemperatureInfo = (temp: number) => {
@@ -57,7 +57,7 @@ const TemperatureWidget = ({
       <div className="flex items-center gap-2 mb-8">
         <Thermometer className="w-6 h-6 text-foreground" />
         <h2 className="text-xl font-display font-bold text-foreground">
-          Termômetro da Marca
+          Termômetro da Marca - Coritiba F.C.
         </h2>
       </div>
 
@@ -167,10 +167,7 @@ const TemperatureWidget = ({
 
       {/* Footer Metrics */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-muted-foreground">Velocidade da Conversa</span>
-          <span className="text-sm font-bold text-foreground">{velocity}</span>
-        </div>
+
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-muted-foreground">Narrativas Ameaçadoras</span>
           <span className="flex items-center justify-center w-6 h-6 rounded-full bg-destructive text-destructive-foreground text-xs font-bold">

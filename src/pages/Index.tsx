@@ -18,14 +18,19 @@ const Index = () => {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [filterSentiment, setFilterSentiment] = useState<"all" | "positive" | "negative" | "neutral">("all");
+  const [sortOption, setSortOption] = useState<"newest" | "oldest">("newest");
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [activeTab]);
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       try {
-        const result = await loadExcelData();
+        // Pass filter and sort params to loadExcelData
+        const result = await loadExcelData(filterSentiment, sortOption);
         setData(result);
       } catch (error) {
         console.error("Failed to load data", error);
@@ -34,7 +39,7 @@ const Index = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [filterSentiment, sortOption]); // Refetch when filter or sort changes
 
   // Derived Metrics
   const lastEvent = data?.events[data.events.length - 1];
@@ -60,7 +65,7 @@ const Index = () => {
   const sentimentNeutral = data?.events.reduce((acc, curr) => acc + curr.neutral, 0) || 0;
   const sentimentNegative = data?.events.reduce((acc, curr) => acc + curr.negative, 0) || 0;
 
-  if (loading) {
+  if (loading && !data) {
     return <div className="min-h-screen bg-background flex items-center justify-center text-foreground">Carregando dados...</div>;
   }
 
@@ -85,15 +90,24 @@ const Index = () => {
             {/* Critical Alert Banner */}
             {criticalEvent && <AlertBanner event={criticalEvent} />}
 
-            {/* Temperature Widget - Use last event risk or 0 */}
-            <TemperatureWidget
-              temperature={lastEvent?.risk || 0}
-              positive={sentimentPositive}
-              negative={sentimentNegative}
-              neutral={sentimentNeutral}
-              velocity="2.8x" // Mocked for now as requested by visual
-              narrativeCount={activeAlerts.length}
-            />
+            {/* Temperature Widget - Calculated from Negative Sentiment % */}
+            {(() => {
+              const totalSentiment = sentimentPositive + sentimentNeutral + sentimentNegative;
+              const calculatedRisk = totalSentiment > 0
+                ? Math.round((sentimentNegative / totalSentiment) * 100)
+                : 0;
+
+              return (
+                <TemperatureWidget
+                  temperature={calculatedRisk}
+                  positive={sentimentPositive}
+                  negative={sentimentNegative}
+                  neutral={sentimentNeutral}
+
+                  narrativeCount={activeAlerts.length}
+                />
+              );
+            })()}
 
             {/* Quick Metrics */}
             <QuickMetrics
@@ -106,7 +120,24 @@ const Index = () => {
             <NarrativesList events={data?.events || []} onViewAll={() => setActiveTab("narratives")} />
 
             {/* Recent Mentions Preview */}
-            <RecentMentions mentions={data?.mentions} onViewAll={() => setActiveTab("mentions")} />
+            <RecentMentions
+              mentions={data?.mentions}
+              onViewAll={() => setActiveTab("mentions")}
+              // Pass sort/filter props for dashboard preview if needed,
+              // or just let dashboard be default view.
+              // The user likely wants sorting/filtering on the full list (mentions tab)
+              // or consistent everywhere. Let's pass empty/defaults here or lift state
+              // but typically dashboard preview is just "Newest".
+              // For now, we will use the same state context if we want it to affect dashboard too,
+              // or we can hardcode dashboard to "newest" "all".
+              // Given the request, let's allow interaction if the component supports it,
+              // but simpler is to keep dashboard simple.
+              // We'll pass the props just in case.
+              filterSentiment={filterSentiment}
+              sortOption={sortOption}
+              onFilterChange={setFilterSentiment}
+              onSortChange={setSortOption}
+            />
           </div>
         )}
 
@@ -118,20 +149,36 @@ const Index = () => {
 
         {activeTab === "mentions" && (
           <div className="space-y-4 py-4">
-            <RecentMentions mentions={data?.mentions} maxItems={data?.mentions?.length || 50} />
+            <RecentMentions
+              mentions={data?.mentions}
+              maxItems={data?.mentions?.length || 50}
+              filterSentiment={filterSentiment}
+              sortOption={sortOption}
+              onFilterChange={setFilterSentiment}
+              onSortChange={setSortOption}
+            />
           </div>
         )}
 
         {activeTab === "analytics" && (
           <div className="space-y-4 py-4 px-4">
-            <TemperatureWidget
-              temperature={lastEvent?.risk || 0}
-              positive={sentimentPositive}
-              negative={sentimentNegative}
-              neutral={sentimentNeutral}
-              velocity="2.8x" // Mocked for now as requested by visual
-              narrativeCount={activeAlerts.length}
-            />
+            {(() => {
+              const totalSentiment = sentimentPositive + sentimentNeutral + sentimentNegative;
+              const calculatedRisk = totalSentiment > 0
+                ? Math.round((sentimentNegative / totalSentiment) * 100)
+                : 0;
+
+              return (
+                <TemperatureWidget
+                  temperature={calculatedRisk}
+                  positive={sentimentPositive}
+                  negative={sentimentNegative}
+                  neutral={sentimentNeutral}
+
+                  narrativeCount={activeAlerts.length}
+                />
+              );
+            })()}
           </div>
         )}
 

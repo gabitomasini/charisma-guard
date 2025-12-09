@@ -16,7 +16,7 @@ const ThermometerCard = ({ temperature, trend, brandName }: ThermometerCardProps
   };
 
   const tempInfo = getTemperatureColor(temperature);
-  
+
   const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
   const trendColor = trend === "up" ? "text-destructive" : trend === "down" ? "text-success" : "text-muted-foreground";
 
@@ -37,7 +37,7 @@ const ThermometerCard = ({ temperature, trend, brandName }: ThermometerCardProps
           {/* Temperature display */}
           <div className="flex-1">
             <div className="flex items-baseline gap-2 mb-4">
-              <span 
+              <span
                 className="text-6xl font-display font-bold"
                 style={{ color: tempInfo.color }}
               >
@@ -54,9 +54,9 @@ const ThermometerCard = ({ temperature, trend, brandName }: ThermometerCardProps
 
             {/* Temperature bar */}
             <div className="h-3 bg-secondary rounded-full overflow-hidden">
-              <div 
+              <div
                 className="h-full rounded-full transition-all duration-1000 ease-out"
-                style={{ 
+                style={{
                   width: `${temperature}%`,
                   background: `linear-gradient(90deg, hsl(142, 76%, 45%) 0%, hsl(38, 92%, 50%) 50%, hsl(0, 72%, 51%) 100%)`
                 }}
@@ -74,18 +74,18 @@ const ThermometerCard = ({ temperature, trend, brandName }: ThermometerCardProps
           {/* Visual thermometer */}
           <div className="hidden sm:flex flex-col items-center">
             <div className="w-8 h-32 bg-secondary rounded-t-full relative overflow-hidden">
-              <div 
+              <div
                 className="absolute bottom-0 left-0 right-0 transition-all duration-1000"
-                style={{ 
+                style={{
                   height: `${temperature}%`,
                   background: tempInfo.color,
                   boxShadow: `0 0 20px ${tempInfo.color}`
                 }}
               />
             </div>
-            <div 
+            <div
               className="w-12 h-12 rounded-full -mt-2"
-              style={{ 
+              style={{
                 background: tempInfo.color,
                 boxShadow: `0 0 30px ${tempInfo.color}`
               }}

@@ -31,9 +31,13 @@ export interface DashboardData {
     lastUpdate: Date;
 }
 
-export const loadExcelData = async (): Promise<DashboardData> => {
+export const loadExcelData = async (filter?: string, sort?: string): Promise<DashboardData> => {
     try {
-        const response = await fetch('/api/dashboard-data');
+        const queryParams = new URLSearchParams();
+        if (filter) queryParams.append('sentiment', filter);
+        if (sort) queryParams.append('sort', sort);
+
+        const response = await fetch(`/api/dashboard-data?${queryParams.toString()}`);
         if (!response.ok) {
             throw new Error(`API error: ${response.status}`);
         }
@@ -49,5 +53,22 @@ export const loadExcelData = async (): Promise<DashboardData> => {
     } catch (error) {
         console.error("Error loading data from API:", error);
         return { mentions: [], events: [], lastUpdate: new Date() };
+    }
+};
+
+export const fetchAiSummaries = async (eventName?: string): Promise<any> => {
+    try {
+        let url = '/api/ai-analysis';
+        if (eventName) {
+            url += `?event=${encodeURIComponent(eventName)}`;
+        }
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`AI API error: ${response.status}`);
+        }
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching AI summaries:", error);
+        return null;
     }
 };

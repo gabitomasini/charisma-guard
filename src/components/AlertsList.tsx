@@ -1,22 +1,64 @@
-import { AlertTriangle, Clock, TrendingUp, ChevronRight, ChevronDown, MessageSquare } from "lucide-react";
+import { AlertTriangle, Clock, TrendingUp, ChevronRight, ChevronDown, MessageSquare, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
-import { EventMetric, Mention } from "@/services/dataService";
+import { EventMetric, Mention, fetchAiSummaries } from "@/services/dataService";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface AlertsListProps {
   alerts?: EventMetric[];
   mentions?: Mention[];
+  aiSummaries?: any;
 }
 
-const AlertsList = ({ alerts = [], mentions = [] }: AlertsListProps) => {
+const AlertsList = ({ alerts = [], mentions = [], aiSummaries }: AlertsListProps) => {
   const [expandedAlert, setExpandedAlert] = useState<string | null>(null);
+  const [summaries, setSummaries] = useState<Record<string, string>>({});
+  const [loadingEvents, setLoadingEvents] = useState<Set<string>>(new Set());
 
-  const toggleAlert = (eventName: string) => {
+  const toggleAlert = async (eventName: string) => {
     if (expandedAlert === eventName) {
       setExpandedAlert(null);
     } else {
       setExpandedAlert(eventName);
+
+      // Check if we need to fetch summary
+      if (!summaries[eventName] && !loadingEvents.has(eventName)) {
+        setLoadingEvents(prev => new Set(prev).add(eventName));
+
+        try {
+          const result = await fetchAiSummaries(eventName);
+
+          let summaryText = null;
+          if (result) {
+            // Updated logic to handle { summaries: [...] } response format
+            if (result.summaries && Array.isArray(result.summaries)) {
+              const match = result.summaries.find((s: any) => s.evento === eventName || s.event === eventName);
+              if (match) {
+                summaryText = match.summary;
+              } else if (result.summaries.length > 0) {
+                // Fallback to first summary if event name doesn't match perfectly
+                summaryText = result.summaries[0].summary;
+              }
+            }
+
+            // Fallback for previous formats
+            if (!summaryText && typeof result === 'string') summaryText = result;
+            if (!summaryText && result.summary) summaryText = result.summary;
+
+            if (summaryText) {
+              setSummaries(prev => ({ ...prev, [eventName]: summaryText }));
+            }
+          }
+        } catch (error) {
+          console.error("Failed to fetch summary for", eventName, error);
+        } finally {
+          setLoadingEvents(prev => {
+            const next = new Set(prev);
+            next.delete(eventName);
+            return next;
+          });
+        }
+      }
     }
   };
 
@@ -48,6 +90,10 @@ const AlertsList = ({ alerts = [], mentions = [] }: AlertsListProps) => {
     }
   };
 
+  const getAiSummaryForEvent = (eventName: string) => {
+    return summaries[eventName];
+  };
+
   return (
     <div className="px-4">
       <div className="flex items-center justify-between mb-3">
@@ -64,7 +110,7 @@ const AlertsList = ({ alerts = [], mentions = [] }: AlertsListProps) => {
         {alerts.map((alert, index) => {
           const styles = getSeverityStyles(alert.criticality);
           const isExpanded = expandedAlert === alert.event;
-          const relatedMentions = mentions.filter(m => m.eventName === alert.event);
+          const aiSummary = getAiSummaryForEvent(alert.event);
 
           return (
             <div
@@ -105,38 +151,30 @@ const AlertsList = ({ alerts = [], mentions = [] }: AlertsListProps) => {
 
               {isExpanded && (
                 <div className="border-t border-border/50 bg-background/50 p-3 space-y-3 animate-in slide-in-from-top-2">
-                  <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground mb-2">
-                    <MessageSquare className="w-3 h-3" />
-                    Menções Relacionadas ({relatedMentions.length})
-                  </div>
 
-                  {relatedMentions.length > 0 ? (
-                    <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                      {relatedMentions.slice(0, 10).map((mention, idx) => (
-                        <div key={idx} className="p-2 rounded-lg bg-card border border-border/50 text-xs">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Avatar className="w-5 h-5">
-                              <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
-                                {(mention.author || "?").substring(0, 1).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="font-medium text-foreground truncate">{mention.author}</span>
-                            <span className="text-[10px] text-muted-foreground ml-auto">{mention.time}</span>
-                          </div>
-                          <p className="text-muted-foreground line-clamp-2">{mention.text}</p>
-                        </div>
-                      ))}
-                      {relatedMentions.length > 10 && (
-                        <div className="text-center text-[10px] text-muted-foreground pt-1">
-                          + {relatedMentions.length - 10} outras menções
-                        </div>
+                  {/* AI Summary Section */}
+                  {(loadingEvents.has(alert.event) || aiSummary) ? (
+                    <div className="bg-primary/5 border border-primary/10 rounded-lg p-3">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-primary mb-2">
+                        <Sparkles className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                        Análise de IA
+                      </div>
+                      {loadingEvents.has(alert.event) ? (
+                        <p className="text-xs text-muted-foreground animate-pulse">
+                          Gerando análise com IA...
+                        </p>
+                      ) : (
+                        <p className="text-xs text-foreground leading-relaxed">
+                          {aiSummary}
+                        </p>
                       )}
                     </div>
                   ) : (
-                    <div className="text-center py-4 text-xs text-muted-foreground">
-                      Nenhuma menção encontrada para este evento.
+                    <div className="text-xs text-muted-foreground italic pl-2">
+                      Clique para carregar a análise da IA.
                     </div>
                   )}
+
                 </div>
               )}
             </div>
