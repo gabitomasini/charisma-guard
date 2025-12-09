@@ -11,6 +11,7 @@ export interface Mention {
 }
 
 export interface EventMetric {
+    date: string;
     event: string;
     negative: number;
     neutral: number;

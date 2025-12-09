@@ -1,4 +1,4 @@
-import { Hash, TrendingUp } from "lucide-react";
+import { Hash, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { EventMetric } from "@/services/dataService";
@@ -6,10 +6,11 @@ import { EventMetric } from "@/services/dataService";
 interface Narrative {
   id: string;
   topic: string;
+  date: string;
   mentions: number;
   percentage: number;
   sentiment: "positive" | "negative" | "neutral";
-  trend: string;
+  criticality: string;
 }
 
 interface NarrativesListProps {
@@ -18,6 +19,15 @@ interface NarrativesListProps {
 }
 
 const NarrativesList = ({ events = [], onViewAll }: NarrativesListProps) => {
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return "";
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateStr;
+  };
+
   const getSentimentColor = (sentiment: Narrative["sentiment"]) => {
     switch (sentiment) {
       case "positive":
@@ -25,9 +35,19 @@ const NarrativesList = ({ events = [], onViewAll }: NarrativesListProps) => {
       case "negative":
         return "bg-destructive";
       case "neutral":
-        return "bg-[#FFE087]";
+        return "bg-warning";
       default:
         return "bg-muted-foreground";
+    }
+  };
+
+  const getCriticalityVariant = (criticality: string) => {
+    switch (criticality) {
+      case "Crítico": return "crisis";
+      case "Alto": return "destructive";
+      case "Moderado": return "warning";
+      case "Baixo": return "secondary";
+      default: return "secondary";
     }
   };
 
@@ -50,17 +70,14 @@ const NarrativesList = ({ events = [], onViewAll }: NarrativesListProps) => {
       sentiment = "positive";
     }
 
-    // Mock trend for visual consistency as we don't have historical data
-    // We can maybe use criticality to influence it or just random
-    const trend = "+0%";
-
     return {
       id: index.toString(),
       topic: event.event,
+      date: event.date,
       mentions: event.total,
       percentage: totalMentions > 0 ? Math.round((event.total / totalMentions) * 100) : 0,
       sentiment,
-      trend
+      criticality: event.criticality
     };
   });
 
@@ -95,14 +112,16 @@ const NarrativesList = ({ events = [], onViewAll }: NarrativesListProps) => {
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <div className={`w-2 h-2 rounded-full shrink-0 ${getSentimentColor(narrative.sentiment)}`} />
-                <span className="font-medium text-foreground text-sm truncate" title={narrative.topic}>{narrative.topic}</span>
+                <span className="font-medium text-foreground text-sm truncate" title={narrative.topic}>
+                  {narrative.topic} {narrative.date ? `- ${formatDate(narrative.date)}` : ''}
+                </span>
               </div>
               <Badge
-                variant={narrative.sentiment === "negative" ? "crisis" : narrative.sentiment === "positive" ? "stable" : "secondary"}
+                variant={getCriticalityVariant(narrative.criticality)}
                 className="text-[10px] h-5 shrink-0"
               >
-                <TrendingUp className="w-3 h-3 mr-1" />
-                {narrative.trend}
+                <AlertTriangle className="w-3 h-3 mr-1" />
+                {narrative.criticality}
               </Badge>
             </div>
             <Progress

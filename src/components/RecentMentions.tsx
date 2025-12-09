@@ -1,13 +1,20 @@
-import { MessageSquare, Heart, Repeat2 } from "lucide-react";
+import { MessageSquare, Heart, Repeat2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Mention } from "@/services/dataService";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 interface RecentMentionsProps {
   mentions?: Mention[];
+  onViewAll?: () => void;
+  maxItems?: number;
 }
 
-const RecentMentions = ({ mentions = [] }: RecentMentionsProps) => {
+const RecentMentions = ({ mentions = [], onViewAll, maxItems = 5 }: RecentMentionsProps) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
+
   const getSentimentStyle = (sentiment: Mention["sentiment"]) => {
     switch (sentiment) {
       case "positive":
@@ -19,16 +26,29 @@ const RecentMentions = ({ mentions = [] }: RecentMentionsProps) => {
     }
   };
 
-  const displayMentions = mentions.length > 0 ? mentions.slice(0, 5) : [];
+  const isPaginated = !onViewAll;
+  const totalItems = mentions.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+  const displayMentions = isPaginated
+    ? mentions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+    : mentions.slice(0, maxItems);
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    window.scrollTo(0, 0);
+  }
 
   return (
-    <div className="px-4">
+    <div className="px-4 pb-20">
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-display font-semibold text-foreground flex items-center gap-2">
           <MessageSquare className="w-4 h-4 text-primary" />
           Menções Recentes
         </h2>
-        <Badge variant="outline" className="text-[10px]">Últimas 24h</Badge>
+        <Badge variant="outline" className="text-[10px]">
+          {isPaginated ? `Página ${currentPage} de ${totalPages}` : "Últimas 24h"}
+        </Badge>
       </div>
 
       <div className="space-y-2">
@@ -42,7 +62,7 @@ const RecentMentions = ({ mentions = [] }: RecentMentionsProps) => {
               <div className="flex items-start gap-3">
                 <Avatar className="w-9 h-9 shrink-0">
                   <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                    {(mention.author || mention.source || "?").substring(0, 2).toUpperCase()}
+                    {String(mention.author || mention.source || "?").substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
@@ -72,6 +92,42 @@ const RecentMentions = ({ mentions = [] }: RecentMentionsProps) => {
             </div>
           );
         })}
+
+        {onViewAll && (
+          <button
+            type="button"
+            onClick={onViewAll}
+            className="w-full py-3 text-xs font-medium text-primary hover:text-primary/80 transition-colors bg-card border border-border/50 rounded-xl"
+          >
+            Ver mais
+          </button>
+        )}
+
+        {isPaginated && totalPages > 1 && (
+          <div className="flex items-center justify-center gap-4 mt-6">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="h-8 w-8"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              {currentPage} / {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage === totalPages}
+              className="h-8 w-8"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

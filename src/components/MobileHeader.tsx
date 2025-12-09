@@ -12,13 +12,11 @@ const MobileHeader = ({ alertCount = 3, onAlertClick }: MobileHeaderProps) => {
       <div className="flex items-center justify-between px-4 h-14">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <div className="relative">
-            <img
-              src="/logo_cloud_new.png"
-              alt="Charisma Logo"
-              className="h-10 w-auto object-contain"
-            />
-          </div>
+          <img
+            src="/logo_cloud_new.png"
+            alt="Charisma Logo"
+            className="h-10 w-auto object-contain"
+          />
           <div>
             <h1 className="font-display font-bold text-sm text-foreground leading-tight">
               Previsão Charisma
@@ -27,6 +25,12 @@ const MobileHeader = ({ alertCount = 3, onAlertClick }: MobileHeaderProps) => {
               Monitorando em tempo real
             </p>
           </div>
+          <div className="h-12 w-[1px] bg-border" />
+          <img
+            src="/Coritiba_Logo.png"
+            alt="Coritiba Logo"
+            className="h-12 w-auto object-contain"
+          />
         </div>
 
         {/* Right actions */}

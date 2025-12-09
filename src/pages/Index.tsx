@@ -19,6 +19,10 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeTab]);
+
+  useEffect(() => {
     const fetchData = async () => {
       try {
         const result = await loadExcelData();
@@ -102,7 +106,7 @@ const Index = () => {
             <NarrativesList events={data?.events || []} onViewAll={() => setActiveTab("narratives")} />
 
             {/* Recent Mentions Preview */}
-            <RecentMentions mentions={data?.mentions} />
+            <RecentMentions mentions={data?.mentions} onViewAll={() => setActiveTab("mentions")} />
           </div>
         )}
 
@@ -114,7 +118,7 @@ const Index = () => {
 
         {activeTab === "mentions" && (
           <div className="space-y-4 py-4">
-            <RecentMentions mentions={data?.mentions} />
+            <RecentMentions mentions={data?.mentions} maxItems={data?.mentions?.length || 50} />
           </div>
         )}
 

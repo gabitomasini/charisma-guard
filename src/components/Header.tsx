@@ -13,13 +13,11 @@ const Header = ({ alertCount = 3, onAlertClick }: HeaderProps) => {
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl transition-all duration-300">
       <div className="container mx-auto px-6 h-16 md:h-24 flex items-center justify-between transition-all duration-300">
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <img
-              src="/logo_cloud_new.png"
-              alt="Charisma Logo"
-              className="h-10 w-auto object-contain transition-all duration-300"
-            />
-          </div>
+          <img
+            src="/logo_cloud_new.png"
+            alt="Charisma Logo"
+            className="h-10 w-auto object-contain transition-all duration-300"
+          />
           <div>
             <h1 className="font-display font-bold text-lg text-foreground hidden md:block">
               Previsão Charisma
@@ -28,6 +26,12 @@ const Header = ({ alertCount = 3, onAlertClick }: HeaderProps) => {
               Sistema de Alerta de Crise
             </p>
           </div>
+          <div className="h-12 w-[1px] bg-border" />
+          <img
+            src="/Coritiba_Logo.png"
+            alt="Coritiba Logo"
+            className="h-12 w-auto object-contain transition-all duration-300"
+          />
         </div>
 
         {/* Nav links removed */}

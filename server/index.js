@@ -54,18 +54,19 @@ const readExcelData = () => {
         // Headers: EVENTO(0), Neg(1), Neu(2), Pos(3), Total(4), AlcNeg(5), AlcNeu(6), AlcPos(7), AlcTotal(8), NR(9), IVN(10), IAN(11), RISCO(12), Criticidade(13)
         // @ts-ignore
         const eventsData = formulasRaw.slice(1).map(row => ({
-            event: row[0],
-            negative: row[1] || 0,
-            neutral: row[2] || 0,
-            positive: row[3] || 0,
-            total: row[4] || 0,
-            reach_negative: row[5] || 0,
-            reach_neutral: row[6] || 0,
-            reach_positive: row[7] || 0,
-            reach_total: row[8] || 0,
-            risk: row[12] || 0,
-            criticality: row[13] || 'Baixo'
-            // @ts-ignore
+            date: row[0] ? XLSX.SSF.format("yyyy-mm-dd", row[0]) : '',
+            event: row[1],
+            negative: row[2] || 0,
+            neutral: row[3] || 0,
+            positive: row[4] || 0,
+            total: row[5] || 0,
+            reach_negative: row[6] || 0,
+            reach_neutral: row[7] || 0,
+            reach_positive: row[8] || 0,
+            reach_total: row[9] || 0,
+            // NR(10), IVN(11), IAN(12)
+            risk: row[13] || 0,
+            criticality: row[14] || 'Baixo'
         })).filter(e => e.event);
 
         return { mentions: mentionsData, events: eventsData, lastUpdate: new Date() };

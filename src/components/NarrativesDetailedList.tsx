@@ -12,7 +12,16 @@ const NarrativesDetailedList = ({ events = [] }: NarrativesDetailedListProps) =>
     const getSentimentColor = (event: EventMetric) => {
         if (event.positive > event.negative && event.positive > event.neutral) return "bg-success";
         if (event.negative > event.positive && event.negative > event.neutral) return "bg-destructive";
-        return "bg-[#FFE087]";
+        return "bg-warning";
+    };
+
+    const formatDate = (dateStr?: string) => {
+        if (!dateStr) return "";
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+        return dateStr;
     };
 
     const getSentimentLabel = (event: EventMetric) => {
@@ -58,7 +67,9 @@ const NarrativesDetailedList = ({ events = [] }: NarrativesDetailedListProps) =>
                         <CardHeader className="pb-3 pt-5 px-5">
                             <div className="flex items-start justify-between gap-4">
                                 <div className="space-y-1.5">
-                                    <CardTitle className="text-lg font-semibold leading-tight">{event.event}</CardTitle>
+                                    <CardTitle className="text-lg font-semibold leading-tight">
+                                        {event.event} {event.date ? `- ${formatDate(event.date)}` : ''}
+                                    </CardTitle>
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                         <Badge variant="outline" className="text-[10px] h-5 px-2 font-medium">
                                             {sentimentLabel}
@@ -102,7 +113,7 @@ const NarrativesDetailedList = ({ events = [] }: NarrativesDetailedListProps) =>
                                 </div>
                                 <div className="h-2.5 flex w-full rounded-full overflow-hidden bg-secondary">
                                     <div style={{ width: `${posPerc}%` }} className="h-full bg-success/80" />
-                                    <div style={{ width: `${neuPerc}%` }} className="h-full bg-[#FFE087]" />
+                                    <div style={{ width: `${neuPerc}%` }} className="h-full bg-warning" />
                                     <div style={{ width: `${negPerc}%` }} className="h-full bg-destructive/80" />
                                 </div>
                             </div>
