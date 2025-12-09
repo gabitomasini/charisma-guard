@@ -14,8 +14,8 @@ const AlertBanner = ({ event }: AlertBannerProps) => {
   return (
     <div
       className={`mx-4 rounded-xl p-4 ${isCritical
-          ? 'bg-destructive/15 border border-destructive/30'
-          : 'bg-warning/15 border border-warning/30'
+        ? 'bg-destructive/15 border border-destructive/30'
+        : 'bg-warning/15 border border-warning/30'
         }`}
     >
       <div className="flex items-start gap-3">
@@ -42,7 +42,8 @@ const AlertBanner = ({ event }: AlertBannerProps) => {
             {event.event}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            Risco: {event.risk.toFixed(1)} | {event.total} menções
+            Risco: {Number(event.risk).toFixed(1)} | {event.total} menções
+
           </p>
         </div>
 

@@ -19,6 +19,8 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
 
   const [filterSentiment, setFilterSentiment] = useState<"all" | "positive" | "negative" | "neutral">("all");
+  const [filterEvent, setFilterEvent] = useState<string>("");
+  const [filterSource, setFilterSource] = useState<string>("all");
   const [sortOption, setSortOption] = useState<"newest" | "oldest">("newest");
 
   useEffect(() => {
@@ -30,7 +32,11 @@ const Index = () => {
       setLoading(true);
       try {
         // Pass filter and sort params to loadExcelData
-        const result = await loadExcelData(filterSentiment, sortOption);
+        // If filterEvent is "all", pass empty string
+        const eventNameParam = filterEvent === "all" ? "" : filterEvent;
+        // If filterSource is "all", pass empty string (or "all" if backend handles it, but safer to assume optional)
+        // Backend check: options.source && options.source !== 'all' -> so passing 'all' is fine or undefined.
+        const result = await loadExcelData(filterSentiment, sortOption, eventNameParam, filterSource);
         setData(result);
       } catch (error) {
         console.error("Failed to load data", error);
@@ -39,7 +45,7 @@ const Index = () => {
       }
     };
     fetchData();
-  }, [filterSentiment, sortOption]); // Refetch when filter or sort changes
+  }, [filterSentiment, sortOption, filterEvent, filterSource]); // Refetch when filter or sort changes
 
   // Derived Metrics
   const lastEvent = data?.events[data.events.length - 1];
@@ -123,20 +129,17 @@ const Index = () => {
             <RecentMentions
               mentions={data?.mentions}
               onViewAll={() => setActiveTab("mentions")}
-              // Pass sort/filter props for dashboard preview if needed,
-              // or just let dashboard be default view.
-              // The user likely wants sorting/filtering on the full list (mentions tab)
-              // or consistent everywhere. Let's pass empty/defaults here or lift state
-              // but typically dashboard preview is just "Newest".
-              // For now, we will use the same state context if we want it to affect dashboard too,
-              // or we can hardcode dashboard to "newest" "all".
-              // Given the request, let's allow interaction if the component supports it,
-              // but simpler is to keep dashboard simple.
-              // We'll pass the props just in case.
               filterSentiment={filterSentiment}
               sortOption={sortOption}
+              filterEvent={filterEvent}
+              filterSource={filterSource}
+              availableEvents={data?.events}
+              availableSources={data?.sources}
               onFilterChange={setFilterSentiment}
               onSortChange={setSortOption}
+              onFilterEventChange={setFilterEvent}
+              onFilterSourceChange={setFilterSource}
+              isLoading={loading}
             />
           </div>
         )}
@@ -154,8 +157,15 @@ const Index = () => {
               maxItems={data?.mentions?.length || 50}
               filterSentiment={filterSentiment}
               sortOption={sortOption}
+              filterEvent={filterEvent}
+              filterSource={filterSource}
+              availableEvents={data?.events}
+              availableSources={data?.sources}
               onFilterChange={setFilterSentiment}
               onSortChange={setSortOption}
+              onFilterEventChange={setFilterEvent}
+              onFilterSourceChange={setFilterSource}
+              isLoading={loading}
             />
           </div>
         )}

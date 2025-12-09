@@ -1,8 +1,9 @@
-import { AlertTriangle, Clock, TrendingUp, ChevronRight, ChevronDown, MessageSquare, Sparkles } from "lucide-react";
+import { AlertTriangle, Clock, TrendingUp, Sparkles, Bell, Loader2, MessageCircle, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
-import { EventMetric, Mention, fetchAiSummaries } from "@/services/dataService";
+import { EventMetric, Mention, fetchAiSummaries, sendTelegramAlert } from "@/services/dataService";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 
 interface AlertsListProps {
   alerts?: EventMetric[];
@@ -14,6 +15,7 @@ const AlertsList = ({ alerts = [], mentions = [], aiSummaries }: AlertsListProps
   const [expandedAlert, setExpandedAlert] = useState<string | null>(null);
   const [summaries, setSummaries] = useState<Record<string, string>>({});
   const [loadingEvents, setLoadingEvents] = useState<Set<string>>(new Set());
+  const [sendingAlerts, setSendingAlerts] = useState<Set<string>>(new Set());
 
   const toggleAlert = async (eventName: string) => {
     if (expandedAlert === eventName) {
@@ -106,8 +108,13 @@ const AlertsList = ({ alerts = [], mentions = [], aiSummaries }: AlertsListProps
         </Badge>
       </div>
 
-      <div className="space-y-2">
-        {alerts.map((alert, index) => {
+      <div className="space-y-4">
+        {[...alerts].sort((a, b) => {
+          const priorities = { 'crítico': 3, 'alto': 2, 'critico': 3, 'moderado': 1, 'baixo': 0 };
+          const pA = priorities[a.criticality?.toLowerCase()] ?? 0;
+          const pB = priorities[b.criticality?.toLowerCase()] ?? 0;
+          return pB - pA;
+        }).map((alert, index) => {
           const styles = getSeverityStyles(alert.criticality);
           const isExpanded = expandedAlert === alert.event;
           const aiSummary = getAiSummaryForEvent(alert.event);
@@ -118,11 +125,10 @@ const AlertsList = ({ alerts = [], mentions = [], aiSummaries }: AlertsListProps
               className={`rounded-xl border border-border/50 overflow-hidden transition-all duration-300 ${isExpanded ? 'bg-card shadow-lg' : styles.bg}`}
             >
               <div
-                className={`p-3 border-l-4 ${styles.border} cursor-pointer active:scale-[0.99] transition-transform flex items-start gap-3`}
-                onClick={() => toggleAlert(alert.event)}
+                className={`p-4 border-l-4 ${styles.border} flex items-start gap-4`}
               >
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <Badge variant={styles.badge} className="text-[10px]">
                       {styles.label}
                     </Badge>
@@ -131,28 +137,81 @@ const AlertsList = ({ alerts = [], mentions = [], aiSummaries }: AlertsListProps
                       Hoje
                     </span>
                   </div>
-                  <h3 className="font-medium text-sm text-foreground mb-1 line-clamp-1">
+                  <h3 className="font-medium text-sm text-foreground mb-2 line-clamp-1">
                     {alert.event}
                   </h3>
-                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                  <div className="flex items-center gap-5 text-[10px] text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <TrendingUp className="w-3 h-3 text-destructive" />
                       +{Math.round(alert.risk * 10)}% Risco
                     </span>
-                    <span>{alert.total.toLocaleString()} menções</span>
+                    <span className="flex items-center gap-1">
+                      <MessageSquare className="w-3 h-3 text-muted-foreground" />
+                      {alert.total.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")} menções
+                    </span>
+                    {alert.interactions !== undefined && (
+                      <span className="flex items-center gap-1 ml-2 border-l border-border/50 pl-2">
+                        <MessageCircle className="w-3 h-3 text-primary" />
+                        {alert.interactions.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")} interações
+                      </span>
+                    )}
                   </div>
                 </div>
-                {isExpanded ? (
-                  <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0 mt-3" />
-                ) : (
-                  <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0 mt-3" />
-                )}
+
+                <div className="flex items-center gap-2 shrink-0 ml-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 text-xs h-8"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleAlert(alert.event);
+                    }}
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    Resumir com IA
+                  </Button>
+
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="gap-2 text-xs h-8"
+                    disabled={sendingAlerts.has(alert.event)}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (sendingAlerts.has(alert.event)) return;
+
+                      setSendingAlerts(prev => new Set(prev).add(alert.event));
+                      console.log("Disparando alerta para:", alert.event);
+
+                      try {
+                        const success = await sendTelegramAlert(`🚨 ALERTA: ${alert.event} - Risco: ${Math.round(alert.risk * 10)}% - Menções: ${alert.total}\n\nAcesse a plataforma Previsão Charisma para ver mais informações.`);
+                        if (success) {
+                          console.log("Alerta enviado com sucesso!");
+                        } else {
+                          console.error("Falha ao enviar alerta.");
+                        }
+                      } finally {
+                        setSendingAlerts(prev => {
+                          const next = new Set(prev);
+                          next.delete(alert.event);
+                          return next;
+                        });
+                      }
+                    }}
+                  >
+                    {sendingAlerts.has(alert.event) ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Bell className="w-3 h-3" />
+                    )}
+                    Enviar Alerta
+                  </Button>
+                </div>
               </div>
 
               {isExpanded && (
                 <div className="border-t border-border/50 bg-background/50 p-3 space-y-3 animate-in slide-in-from-top-2">
-
-                  {/* AI Summary Section */}
                   {(loadingEvents.has(alert.event) || aiSummary) ? (
                     <div className="bg-primary/5 border border-primary/10 rounded-lg p-3">
                       <div className="flex items-center gap-2 text-xs font-semibold text-primary mb-2">
@@ -174,14 +233,13 @@ const AlertsList = ({ alerts = [], mentions = [], aiSummaries }: AlertsListProps
                       Clique para carregar a análise da IA.
                     </div>
                   )}
-
                 </div>
               )}
             </div>
           );
         })}
       </div>
-    </div>
+    </div >
   );
 };
 

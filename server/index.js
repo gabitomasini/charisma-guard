@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { readExcelData } from './utils.js';
+import { fetchDashboardData } from './utils.js';
 import { generateAiPayload, fetchAiInsights } from './aiService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -16,12 +16,13 @@ app.use(express.json());
 
 
 
-app.get('/api/dashboard-data', (req, res) => {
+app.get('/api/dashboard-data', async (req, res) => {
     try {
-        const { sentiment, sort } = req.query;
-        const data = readExcelData({ sentiment, sort });
+        const { sentiment, sort, eventName, source } = req.query;
+        const data = await fetchDashboardData({ sentiment, sort, eventName, source });
         res.json(data);
     } catch (error) {
+        console.error(error);
         res.status(500).json({ error: 'Failed to load dashboard data' });
     }
 });
@@ -29,7 +30,8 @@ app.get('/api/dashboard-data', (req, res) => {
 app.get('/api/ai-analysis', async (req, res) => {
     try {
         const { event } = req.query;
-        const data = readExcelData();
+        // Fix: Fetch newest mentions AND specific event mentions to ensure we catch relevant data
+        const data = await fetchDashboardData({ sort: 'newest', eventName: event });
         const payload = generateAiPayload(data, event);
         const insights = await fetchAiInsights(payload);
         res.json(insights);

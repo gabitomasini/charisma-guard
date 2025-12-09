@@ -23,19 +23,38 @@ export interface EventMetric {
     reach_total: number;
     risk: number;
     criticality: 'Baixo' | 'Moderado' | 'Alto' | 'Crítico';
+    interactions?: number;
+}
+
+// Assuming SentimentCounts and VolumeHistory are defined elsewhere or will be defined.
+// For the purpose of this edit, we'll treat them as valid types.
+interface SentimentCounts {
+    positive: number;
+    negative: number;
+    neutral: number;
+}
+
+interface VolumeHistory {
+    date: string;
+    volume: number;
 }
 
 export interface DashboardData {
     mentions: Mention[];
     events: EventMetric[];
+    sentimentCounts: SentimentCounts;
+    volumeHistory: VolumeHistory[];
     lastUpdate: Date;
+    sources?: string[];
 }
 
-export const loadExcelData = async (filter?: string, sort?: string): Promise<DashboardData> => {
+export const loadExcelData = async (filter?: string, sort?: string, eventName?: string, source?: string): Promise<DashboardData> => {
     try {
         const queryParams = new URLSearchParams();
         if (filter) queryParams.append('sentiment', filter);
         if (sort) queryParams.append('sort', sort);
+        if (eventName) queryParams.append('eventName', eventName);
+        if (source) queryParams.append('source', source);
 
         const response = await fetch(`/api/dashboard-data?${queryParams.toString()}`);
         if (!response.ok) {
@@ -46,13 +65,19 @@ export const loadExcelData = async (filter?: string, sort?: string): Promise<Das
         // Ensure dates are parsed back to Date objects if needed, 
         // essentially just return the data structure now matching what the server sends
         return {
-            mentions: data.mentions,
-            events: data.events,
+            ...data,
             lastUpdate: new Date(data.lastUpdate)
         };
     } catch (error) {
         console.error("Error loading data from API:", error);
-        return { mentions: [], events: [], lastUpdate: new Date() };
+        return {
+            mentions: [],
+            events: [],
+            sentimentCounts: { positive: 0, negative: 0, neutral: 0 },
+            volumeHistory: [],
+            lastUpdate: new Date(),
+            sources: []
+        };
     }
 };
 
@@ -70,5 +95,23 @@ export const fetchAiSummaries = async (eventName?: string): Promise<any> => {
     } catch (error) {
         console.error("Error fetching AI summaries:", error);
         return null;
+    }
+};
+
+export const sendTelegramAlert = async (message: string): Promise<boolean> => {
+    try {
+        const response = await fetch("http://localhost:8000/telegram/send-message/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Telegram API error: ${response.status}`);
+        }
+        return true;
+    } catch (error) {
+        console.error("Error sending Telegram alert:", error);
+        return false;
     }
 };

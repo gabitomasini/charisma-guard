@@ -1,147 +1,144 @@
-import XLSX from 'xlsx';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { query } from './db.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Helper function to read Excel file
-export const readExcelData = (options = {}) => {
+// Helper to format date
+const formatDate = (date) => {
+    if (!date) return '';
     try {
-        const filePath = path.join(__dirname, '../public/Mentions_Coritiba.xlsx');
-        const workbook = XLSX.readFile(filePath);
+        const d = new Date(date);
+        if (isNaN(d.getTime())) return String(date);
 
-        // Parse 'mentions' sheet
-        const mentionsSheet = workbook.Sheets['mentions_jan_a_mar'];
-        const mentionsRaw = XLSX.utils.sheet_to_json(mentionsSheet, { header: 1 });
+        // Format to DD/MM/YYYY
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+    } catch {
+        return String(date);
+    }
+};
 
-        // Find header row and indices
-        // @ts-ignore
-        const mentionsHeaders = mentionsRaw[0];
+export const fetchDashboardData = async (options = {}) => {
+    try {
+        console.log(" [DEBUG] Executing fetchDashboardData with UPDATED SQL logic");
+        // --- 1. Fetch Mentions from 'coritiba_mentions_bw' ---
+        let mentionsQuery = `
+            SELECT 
+                date, time, title, snippet, url, sentiment, 
+                page_type as source, region as location, author, evento as "eventName"
+            FROM coritiba_mentions_bw
+            WHERE date IS NOT NULL
+        `;
 
-        // @ts-ignore
-        const eventNameIndex = mentionsHeaders.indexOf("EVENTO");
+        const params = [];
+        let paramCount = 1;
 
-        // Skip header row
-        // @ts-ignore
-        // @ts-ignore
-        const mentionsData = mentionsRaw.slice(1).map(row => {
-            const rawSentiment = (row[5] || 'neutral').toString().toLowerCase().trim();
-            let sentiment = 'neutral';
-            if (rawSentiment.includes('pos')) sentiment = 'positive';
-            else if (rawSentiment.includes('neg')) sentiment = 'negative';
-
-            // Format date if it's an Excel serial number
-            let dateStr = row[0];
-            if (typeof row[0] === 'number') {
-                const dateObj = XLSX.SSF.parse_date_code(row[0]);
-                // pad with leading zeros
-                const day = String(dateObj.d).padStart(2, '0');
-                const month = String(dateObj.m).padStart(2, '0');
-                dateStr = `${day}/${month}/${dateObj.y}`;
-            }
-
-            return {
-                date: dateStr,
-                time: row[1],
-                text: row[3], // Column D is Text
-                url: row[4],  // Column E is URL
-                sentiment: sentiment, // Normalized to 'positive' | 'negative' | 'neutral'
-                source: row[6], // Column G is Domain/Source
-                location: row[7], // Column H is Location
-                author: row[8], // Column I is Authot
-                eventName: (() => {
-                    if (eventNameIndex === -1 || !row[eventNameIndex]) return undefined;
-                    let name = String(row[eventNameIndex]).trim();
-                    name = name.replace(/^\d{2}\/\d{2}\s*[-–]\s*/, '');
-                    return name.trim();
-                })()
-            };
-        }).filter(m => m.text && m.date);
-
-        console.log(`[DEBUG] Loaded ${mentionsData.length} mentions. First sentiment: ${mentionsData[0]?.sentiment}`);
-
-        // Parse 'fórmulas' sheet
-        const formulasSheet = workbook.Sheets['fórmulas'];
-        const formulasRaw = XLSX.utils.sheet_to_json(formulasSheet, { header: 1 });
-
-        // Skip header row
-        // Headers: EVENTO(0), Neg(1), Neu(2), Pos(3), Total(4), AlcNeg(5), AlcNeu(6), AlcPos(7), AlcTotal(8), NR(9), IVN(10), IAN(11), RISCO(12), Criticidade(13)
-        // @ts-ignore
-        const eventsData = formulasRaw.slice(1).map(row => ({
-            date: row[0] ? XLSX.SSF.format("yyyy-mm-dd", row[0]) : '',
-            event: row[1] ? String(row[1]).trim() : '',
-            negative: row[2] || 0,
-            neutral: row[3] || 0,
-            positive: row[4] || 0,
-            total: row[5] || 0,
-            reach_negative: row[6] || 0,
-            reach_neutral: row[7] || 0,
-            reach_positive: row[8] || 0,
-            reach_total: row[9] || 0,
-            // NR(10), IVN(11), IAN(12)
-            risk: row[13] || 0,
-            criticality: row[14] || 'Baixo'
-        })).filter(e => e.event);
-
-        // Initial filtering by valid text and date
-        let finalMentions = mentionsData.filter(m => m.text && m.date);
-
-        console.log(`[DEBUG] Request Options:`, options);
-
-        // Apply Sentiment Filter
-        if (options.sentiment && options.sentiment !== 'all') {
-            console.log(`[DEBUG] Filtering by sentiment: ${options.sentiment}`);
-            finalMentions = finalMentions.filter(m => m.sentiment === options.sentiment);
-            console.log(`[DEBUG] Filtered count: ${finalMentions.length}`);
+        if (options.eventName) {
+            mentionsQuery += ` AND evento = $${paramCount}`;
+            params.push(options.eventName);
+            paramCount++;
         }
 
-        // Apply Sorting
-        if (options.sort) {
-            console.log(`[DEBUG] Sorting by: ${options.sort}`);
-            finalMentions.sort((a, b) => {
-                const parseDate = (dateStr, timeStr) => {
-                    try {
-                        // formats: DD/MM/YYYY or DD/MM
-                        if (!dateStr) return 0;
-                        const parts = String(dateStr).split('/');
-                        let day = parseInt(parts[0], 10);
-                        let month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
-                        // If year is missing, assume current year or generic year for comparison
-                        let year = parts[2] ? parseInt(parts[2], 10) : new Date().getFullYear();
+        // Sentiment Filter
+        if (options.sentiment && options.sentiment !== 'all') {
+            // Using ILIKE for case-insensitive matching (e.g., 'Positive' matches 'positive')
+            mentionsQuery += ` AND sentiment ILIKE $${paramCount}`;
+            params.push(`%${options.sentiment}%`);
+            paramCount++;
+        }
 
-                        let hours = 0, mins = 0;
-                        if (timeStr) {
-                            // timeStr can be generic formatted number from Excel like 0.5 for noon, 
-                            // or a string "HH:MM"
-                            if (String(timeStr).includes(':')) {
-                                const tParts = String(timeStr).split(':');
-                                hours = parseInt(tParts[0], 10);
-                                mins = parseInt(tParts[1], 10);
-                            } else if (typeof timeStr === 'number') {
-                                // Excel fraction of day
-                                const totalMins = Math.floor(timeStr * 24 * 60);
-                                hours = Math.floor(totalMins / 60);
-                                mins = totalMins % 60;
-                            }
-                        }
+        // Source (Social Network) Filter
+        if (options.source && options.source !== 'all') {
+            mentionsQuery += ` AND page_type ILIKE $${paramCount}`;
+            params.push(`%${options.source}%`);
+            paramCount++;
+        }
 
-                        return new Date(year, month, day, hours, mins).getTime();
-                    } catch (e) {
-                        return 0;
-                    }
-                };
+        // Sorting
+        if (options.sort === 'newest') {
+            mentionsQuery += ` ORDER BY date DESC, time DESC`;
+        } else {
+            mentionsQuery += ` ORDER BY date ASC, time ASC`;
+        }
 
-                const timeA = parseDate(a.date, a.time);
-                const timeB = parseDate(b.date, b.time);
+        // Safety limit (optional but good practice)
+        mentionsQuery += ` LIMIT 5000`;
 
-                return options.sort === 'newest' ? timeB - timeA : timeA - timeB;
+        console.log(`[DB] Executing mentions query...`);
+        const mentionsRes = await query(mentionsQuery, params);
+
+        const mentions = mentionsRes.rows.map(row => ({
+            date: formatDate(row.date),
+            time: row.time,
+            text: row.snippet || row.title, // Use snippet if available, else title
+            url: row.url,
+            sentiment: (row.sentiment || 'neutral').toLowerCase().trim(),
+            source: row.source,
+            location: row.location,
+            author: row.author,
+            eventName: row.eventName ? row.eventName.trim() : undefined
+        }));
+
+        console.log(`[DB] Fetched ${mentions.length} mentions.`);
+
+        // --- 2. Fetch Events from 'coritiba_indices_bw' ---
+        console.log(`[DB] Executing events query...`);
+        const eventsRes = await query(`
+            SELECT 
+                data as "date", evento as "event", 
+                mencoes_negativas as negative, mencoes_neutras as neutral, mencoes_positivas as positive, 
+                mencoes_total as total,
+                CAST(regexp_replace(alcance_negativo, '[^0-9]', '', 'g') AS NUMERIC) as reach_negative, 
+                CAST(regexp_replace(alcance_neutro, '[^0-9]', '', 'g') AS NUMERIC) as reach_neutral, 
+                CAST(regexp_replace(alcance_positivo, '[^0-9]', '', 'g') AS NUMERIC) as reach_positive, 
+                CAST(regexp_replace(alcance_total, '[^0-9]', '', 'g') AS NUMERIC) as reach_total,
+                CAST(REPLACE(regexp_replace(risco, '[^0-9,]', '', 'g'), ',', '.') AS NUMERIC) as "risk", 
+                criticidade as "criticality",
+                interacoes as "interactions"
+            FROM coritiba_indices_bw
+
+
+        `);
+
+        const events = eventsRes.rows.map(row => ({
+            date: formatDate(row.date),
+            event: row.event,
+            negative: Number(row.negative) || 0,
+            neutral: Number(row.neutral) || 0,
+            positive: Number(row.positive) || 0,
+            total: Number(row.total) || 0,
+            reach_negative: Number(row.reach_negative) || 0,
+            reach_neutral: Number(row.reach_neutral) || 0,
+            reach_positive: Number(row.reach_positive) || 0,
+            reach_total: Number(row.reach_total) || 0,
+            risk: Number(row.risk) || 0,
+            criticality: row.criticality || 'Baixo',
+            interactions: Number(row.interactions) || 0
+        }));
+
+        console.log(`[DB] Fetched ${events.length} events.`);
+        if (events.length > 0) {
+            console.log("[DEBUG] Sample Event Data Types:", {
+                total: typeof events[0].total,
+                risk: typeof events[0].risk,
+                reach_total: typeof events[0].reach_total,
+                value_sample: events[0].reach_total
             });
         }
 
-        return { mentions: finalMentions, events: eventsData, lastUpdate: new Date() };
+        // --- 3. Fetch Available Sources (page_type) ---
+        console.log(`[DB] Executing sources query...`);
+        const sourcesRes = await query(`
+            SELECT DISTINCT page_type
+            FROM coritiba_mentions_bw
+            WHERE page_type IS NOT NULL
+            ORDER BY page_type ASC
+        `);
+        const sources = sourcesRes.rows.map(row => row.page_type);
+
+        return { mentions, events, sources, lastUpdate: new Date() };
+
     } catch (error) {
-        console.error("Error reading Excel file:", error);
+        console.error("Error fetching dashboard data from DB:", error);
         throw error;
     }
 };
