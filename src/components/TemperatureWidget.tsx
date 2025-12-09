@@ -118,48 +118,48 @@ const TemperatureWidget = ({
         </div>
       </div>
 
-      {/* Metrics Bars */}
-      <div className="space-y-4 mb-8">
-        {/* Positive */}
-        <div className="grid grid-cols-[80px_1fr_40px] gap-4 items-center">
-          <span className="text-sm font-medium text-muted-foreground">Positivo</span>
-          <div className="h-2 bg-secondary rounded-full overflow-hidden">
-            <div
-              className="h-full bg-success rounded-full"
-              style={{ width: `${(positive / maxVal) * 100}%` }}
-            />
-          </div>
-          <span className="text-sm font-bold text-foreground text-right">{positive}</span>
+      {/* Single Stacked Bar for Sentiments */}
+      <div className="mb-8">
+        <div className="flex justify-between text-sm mb-2 font-medium text-muted-foreground">
+          <span>Sentimento Geral</span>
+          <span>{positive + neutral + negative} total</span>
         </div>
 
-        {/* Negative */}
-        <div className="grid grid-cols-[80px_1fr_40px] gap-4 items-center">
-          <span className="text-sm font-medium text-muted-foreground">Negativo</span>
-          <div className="h-2 bg-secondary rounded-full overflow-hidden">
-            <div
-              className="h-full bg-destructive rounded-full"
-              style={{ width: `${(negative / maxVal) * 100}%` }}
-            />
-          </div>
-          <span className="text-sm font-bold text-foreground text-right">{negative}</span>
+        <div className="h-4 w-full bg-secondary rounded-full overflow-hidden flex">
+          {/* Positive Segment */}
+          <div
+            className="h-full bg-success transition-all duration-500"
+            style={{ width: `${(positive / (positive + neutral + negative || 1)) * 100}%` }}
+          />
+          {/* Neutral Segment */}
+          <div
+            className="h-full bg-warning transition-all duration-500"
+            style={{ width: `${(neutral / (positive + neutral + negative || 1)) * 100}%` }}
+          />
+          {/* Negative Segment */}
+          <div
+            className="h-full bg-destructive transition-all duration-500"
+            style={{ width: `${(negative / (positive + neutral + negative || 1)) * 100}%` }}
+          />
         </div>
 
-        {/* Neutral */}
-        <div className="grid grid-cols-[80px_1fr_40px] gap-4 items-center">
-          <span className="text-sm font-medium text-muted-foreground">Neutro</span>
-          <div className="h-2 bg-secondary rounded-full overflow-hidden">
-            {/* Used warning color for Neutral to match the yellow visual provided, 
-                    or stick to muted if strict to project vars. 
-                    Image contained yellow bar for "Neutro". 
-                    In project, --warning is yellow (hsl(38...)). 
-                    I'll use warning color for visuals here as 'Neutral' is often yellow in dashboard traffic lights. 
-                */}
-            <div
-              className="h-full bg-warning rounded-full"
-              style={{ width: `${(neutral / maxVal) * 100}%` }}
-            />
+        {/* Legend / Values */}
+        <div className="flex justify-between mt-3 text-xs">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-success" />
+            <span className="text-muted-foreground">Positivo:</span>
+            <span className="font-bold text-foreground">{positive}</span>
           </div>
-          <span className="text-sm font-bold text-foreground text-right">{neutral}</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-warning" />
+            <span className="text-muted-foreground">Neutro:</span>
+            <span className="font-bold text-foreground">{neutral}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-destructive" />
+            <span className="text-muted-foreground">Negativo:</span>
+            <span className="font-bold text-foreground">{negative}</span>
+          </div>
         </div>
       </div>
 

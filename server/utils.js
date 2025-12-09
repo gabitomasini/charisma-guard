@@ -92,6 +92,7 @@ export const fetchDashboardData = async (options = {}) => {
                 CAST(regexp_replace(alcance_positivo, '[^0-9]', '', 'g') AS NUMERIC) as reach_positive, 
                 CAST(regexp_replace(alcance_total, '[^0-9]', '', 'g') AS NUMERIC) as reach_total,
                 CAST(REPLACE(regexp_replace(risco, '[^0-9,]', '', 'g'), ',', '.') AS NUMERIC) as "risk", 
+                CAST(REPLACE(regexp_replace(nr, '[^0-9,]', '', 'g'), ',', '.') AS NUMERIC) as "nr",
                 criticidade as "criticality",
                 interacoes as "interactions"
             FROM coritiba_indices_bw
@@ -111,7 +112,8 @@ export const fetchDashboardData = async (options = {}) => {
             reach_positive: Number(row.reach_positive) || 0,
             reach_total: Number(row.reach_total) || 0,
             risk: Number(row.risk) || 0,
-            criticality: row.criticality || 'Baixo',
+            nr: Number(row.nr) || 0,
+            criticality: row.criticality,
             interactions: Number(row.interactions) || 0
         }));
 
@@ -135,7 +137,53 @@ export const fetchDashboardData = async (options = {}) => {
         `);
         const sources = sourcesRes.rows.map(row => row.page_type);
 
-        return { mentions, events, sources, lastUpdate: new Date() };
+        // --- 4. Fetch Social Metrics from 'coritiba_redes_sociais_bw' ---
+        console.log(`[DB] Executing social metrics query...`);
+        const socialRes = await query(`
+            SELECT * FROM coritiba_redes_sociais_bw
+        `);
+
+        if (socialRes.rows.length > 0) {
+            console.log("[DEBUG] Social Metrics Row Structure:", Object.keys(socialRes.rows[0]));
+            // Also log the first row values to be sure
+            console.log("[DEBUG] First Row:", socialRes.rows[0]);
+        }
+
+        // Map assuming potential column names based on other tables, but keeping it raw for inspection if needed
+        // Assuming columns: rede_social, mencoes_total, mencoes_negativas, etc.
+        const socialMetrics = socialRes.rows.map(row => ({
+            channel: row.page_type,
+            total: Number(row.mencoes_total) || Number(row.total) || 0,
+            negative: Number(row.mencoes_negativas) || Number(row.negativas) || 0,
+            positive: Number(row.mencoes_positivas) || Number(row.positivas) || 0,
+            neutral: Number(row.mencoes_neutras) || Number(row.neutras) || 0
+        }));
+
+        // --- 5. Calculate Sentiment Evolution from Fetched Mentions (In-Memory) ---
+        // Reuse the 'mentions' array (first 5000 rows) to avoid slow DB aggregation
+        const evolutionMap = {};
+
+        mentions.forEach(m => {
+            if (!m.date) return;
+            const d = new Date(m.date);
+            if (isNaN(d.getTime())) return;
+
+            // Format YYYY-MM
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+            if (!evolutionMap[key]) {
+                evolutionMap[key] = { date: key, positive: 0, negative: 0, neutral: 0 };
+            }
+
+            const sentiment = m.sentiment ? m.sentiment.toLowerCase() : '';
+            if (sentiment === 'positivo') evolutionMap[key].positive++;
+            else if (sentiment === 'negativo') evolutionMap[key].negative++;
+            else evolutionMap[key].neutral++; // treat others/neutral as neutral
+        });
+
+        const sentimentEvolution = Object.values(evolutionMap).sort((a, b) => a.date.localeCompare(b.date));
+
+        return { mentions, events, sources, socialMetrics, sentimentEvolution, lastUpdate: new Date() };
 
     } catch (error) {
         console.error("Error fetching dashboard data from DB:", error);

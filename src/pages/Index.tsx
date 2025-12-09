@@ -9,6 +9,7 @@ import RecentMentions from "@/components/RecentMentions";
 import NarrativesList from "@/components/NarrativesList";
 import BottomNav from "@/components/BottomNav";
 import NarrativesDetailedList from "@/components/NarrativesDetailedList";
+import ChannelAnalysis from "@/components/ChannelAnalysis";
 import { loadExcelData, DashboardData, EventMetric } from "@/services/dataService";
 
 type Tab = "home" | "alerts" | "mentions" | "analytics" | "narratives" | "settings";
@@ -96,20 +97,18 @@ const Index = () => {
             {/* Critical Alert Banner */}
             {criticalEvent && <AlertBanner event={criticalEvent} />}
 
-            {/* Temperature Widget - Calculated from Negative Sentiment % */}
+            {/* Temperature Widget - Calculated from Average NR */}
             {(() => {
-              const totalSentiment = sentimentPositive + sentimentNeutral + sentimentNegative;
-              const calculatedRisk = totalSentiment > 0
-                ? Math.round((sentimentNegative / totalSentiment) * 100)
-                : 0;
+              // Formula: Sum of NR / Number of Events
+              const avgNr = (data?.events.reduce((acc, curr) => acc + (curr.nr || 0), 0) || 0) / (data?.events.length || 1);
+              const roundedNr = Math.round(avgNr);
 
               return (
                 <TemperatureWidget
-                  temperature={calculatedRisk}
+                  temperature={roundedNr}
                   positive={sentimentPositive}
                   negative={sentimentNegative}
                   neutral={sentimentNeutral}
-
                   narrativeCount={activeAlerts.length}
                 />
               );
@@ -172,23 +171,9 @@ const Index = () => {
 
         {activeTab === "analytics" && (
           <div className="space-y-4 py-4 px-4">
-            {(() => {
-              const totalSentiment = sentimentPositive + sentimentNeutral + sentimentNegative;
-              const calculatedRisk = totalSentiment > 0
-                ? Math.round((sentimentNegative / totalSentiment) * 100)
-                : 0;
-
-              return (
-                <TemperatureWidget
-                  temperature={calculatedRisk}
-                  positive={sentimentPositive}
-                  negative={sentimentNegative}
-                  neutral={sentimentNeutral}
-
-                  narrativeCount={activeAlerts.length}
-                />
-              );
-            })()}
+            <div className="space-y-4">
+              <ChannelAnalysis data={data?.socialMetrics} />
+            </div>
           </div>
         )}
 

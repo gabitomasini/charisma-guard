@@ -24,6 +24,7 @@ export interface EventMetric {
     risk: number;
     criticality: 'Baixo' | 'Moderado' | 'Alto' | 'Crítico';
     interactions?: number;
+    nr?: number;
 }
 
 // Assuming SentimentCounts and VolumeHistory are defined elsewhere or will be defined.
@@ -39,11 +40,28 @@ interface VolumeHistory {
     volume: number;
 }
 
+export interface SocialMetric {
+    channel: string;
+    total: number;
+    negative: number;
+    positive: number;
+    neutral: number;
+}
+
+export interface SentimentTrend {
+    date: string;
+    positive: number;
+    negative: number;
+    neutral: number;
+}
+
 export interface DashboardData {
     mentions: Mention[];
     events: EventMetric[];
     sentimentCounts: SentimentCounts;
     volumeHistory: VolumeHistory[];
+    socialMetrics?: SocialMetric[];
+    sentimentEvolution?: SentimentTrend[];
     lastUpdate: Date;
     sources?: string[];
 }
